@@ -8,7 +8,7 @@
 // Lista de clínicas: ÚNICA operação com service_role (leitura de
 // clinicas ativas). Todo o resto roda com JWT por clínica + RLS.
 // ============================================================
-const { createClient } = require('@supabase/supabase-js');
+const { clientDaClinica } = require('./src/infrastructure/supabase');
 const { processarFila } = require('./src/application/automacao/outboxWorker');
 const agendadores = require('./src/application/automacao/agendadores');
 
@@ -20,10 +20,8 @@ let clinicasCache = { lista: [], em: 0 };
 
 async function listarClinicas() {
   if (Date.now() - clinicasCache.em < 10 * 60_000) return clinicasCache.lista;
-  const admin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false },
-  });
-  const { data, error } = await admin.from('clinicas').select('id, nome, config').eq('ativo', true);
+  const db = clientDaClinica();
+  const { data, error } = await db.from('clinicas').select('id, nome, config').eq('ativo', true);
   if (error) {
     console.error('[worker] erro ao listar clínicas:', error.message);
     return clinicasCache.lista; // usa cache antigo em caso de falha

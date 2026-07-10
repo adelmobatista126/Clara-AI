@@ -18,6 +18,7 @@ async function gerarConfirmacoes24h(clinicaId) {
   const { data: ags, error } = await db
     .from('agendamentos')
     .select('id, paciente_id, inicio, procedimento, profissionais(nome)')
+    .eq('clinica_id', clinicaId)
     .eq('status', 'agendado')
     .gte('inicio', inicio)
     .lte('inicio', fim);
@@ -45,6 +46,7 @@ async function gerarLembretes2h(clinicaId) {
   const { data: ags, error } = await db
     .from('agendamentos')
     .select('id, paciente_id, inicio')
+    .eq('clinica_id', clinicaId)
     .in('status', ['agendado', 'confirmado'])
     .gte('inicio', inicio)
     .lte('inicio', fim);
@@ -77,6 +79,7 @@ async function recuperarInativos(clinicaId) {
   const { data: inativos, error } = await db
     .from('v_pacientes_inativos')
     .select('*')
+    .eq('clinica_id', clinicaId)
     .limit(restante);
   if (error) return log('recuperacao', error.message);
 
@@ -94,7 +97,7 @@ async function recuperarInativos(clinicaId) {
 // ------------------------------------------------------------
 async function felicitarAniversariantes(clinicaId) {
   const db = clientDaClinica(clinicaId);
-  const { data: nivers, error } = await db.from('v_aniversariantes_hoje').select('*');
+  const { data: nivers, error } = await db.from('v_aniversariantes_hoje').select('*').eq('clinica_id', clinicaId);
   if (error) return log('aniversario', error.message);
 
   for (const p of nivers) {
@@ -114,6 +117,7 @@ async function gerarPesquisas(clinicaId) {
   const { data: ags, error } = await db
     .from('agendamentos')
     .select('id, paciente_id, procedimento')
+    .eq('clinica_id', clinicaId)
     .eq('status', 'concluido')
     .gte('atualizado_em', ontem);
   if (error) return log('pesquisa', error.message);

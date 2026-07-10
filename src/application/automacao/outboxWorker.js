@@ -25,6 +25,7 @@ async function processarFila(clinica) {
   const { data: pendentes, error } = await db
     .from('outbox')
     .select('*, pacientes(nome, telefone)')
+    .eq('clinica_id', clinica.id)
     .eq('status', 'pendente')
     .lte('agendado_para', new Date().toISOString())
     .order('agendado_para')
@@ -82,6 +83,7 @@ async function registrarNoHistorico(db, clinicaId, pacienteId, texto) {
   const { data: conversa } = await db
     .from('conversas')
     .select('id')
+    .eq('clinica_id', clinicaId)
     .eq('paciente_id', pacienteId)
     .eq('status', 'ativa')
     .order('criado_em', { ascending: false })

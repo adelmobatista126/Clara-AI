@@ -18,15 +18,17 @@ async function horariosDisponiveis(clinicaId, { profissionalId, de, ate }) {
   const dtAte = new Date(ate);
 
   const [grade, ags, blqs] = await Promise.all([
-    db.from('profissional_horarios').select('*').eq('profissional_id', profissionalId),
+    db.from('profissional_horarios').select('*').eq('clinica_id', clinicaId).eq('profissional_id', profissionalId),
     db.from('agendamentos')
       .select('inicio, fim')
+      .eq('clinica_id', clinicaId)
       .eq('profissional_id', profissionalId)
       .in('status', ['agendado', 'confirmado'])
       .gte('inicio', dtDe.toISOString())
       .lte('fim', new Date(dtAte.getTime() + 86_400_000).toISOString()),
     db.from('agenda_bloqueios')
       .select('inicio, fim, profissional_id')
+      .eq('clinica_id', clinicaId)
       .gte('fim', dtDe.toISOString())
       .lte('inicio', new Date(dtAte.getTime() + 86_400_000).toISOString()),
   ]);
@@ -104,7 +106,7 @@ async function agendar(clinicaId, { pacienteId, profissionalId, procedimento, in
 async function reagendar(clinicaId, agendamentoId, { novoInicio, duracaoMin = 30 }) {
   const db = clientDaClinica(clinicaId);
 
-  const atual = await db.from('agendamentos').select('*').eq('id', agendamentoId).single();
+  const atual = await db.from('agendamentos').select('*').eq('id', agendamentoId).eq('clinica_id', clinicaId).single();
   if (atual.error) return { erro: atual.error.message };
 
   const novo = await agendar(clinicaId, {
@@ -144,6 +146,7 @@ async function cancelar(clinicaId, agendamentoId, { motivo = 'paciente solicitou
     .from('agendamentos')
     .update({ status: 'cancelado', cancelado_em: new Date().toISOString(), motivo_cancel: motivo })
     .eq('id', agendamentoId)
+    .eq('clinica_id', clinicaId)
     .in('status', ['agendado', 'confirmado'])
     .select()
     .single();
@@ -169,6 +172,7 @@ async function confirmar(clinicaId, agendamentoId) {
     .from('agendamentos')
     .update({ status: 'confirmado', confirmado_em: new Date().toISOString() })
     .eq('id', agendamentoId)
+    .eq('clinica_id', clinicaId)
     .eq('status', 'agendado')
     .select()
     .single();

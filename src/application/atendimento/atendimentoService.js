@@ -143,16 +143,18 @@ async function conversarComClaude(contexto, ctxFerramentas) {
 async function montarContexto(db, clinicaId, paciente, conversaId) {
   const [clinica, conhecimento, profissionais, ags, hist] = await Promise.all([
     db.from('clinicas').select('*').eq('id', clinicaId).single(),
-    db.from('base_conhecimento').select('*').eq('ativo', true),
-    db.from('profissionais').select('id, nome, especialidades').eq('ativo', true),
+    db.from('base_conhecimento').select('*').eq('clinica_id', clinicaId).eq('ativo', true),
+    db.from('profissionais').select('id, nome, especialidades').eq('clinica_id', clinicaId).eq('ativo', true),
     db.from('agendamentos')
       .select('id, inicio, procedimento, status')
+      .eq('clinica_id', clinicaId)
       .eq('paciente_id', paciente.id)
       .in('status', ['agendado', 'confirmado'])
       .gte('inicio', new Date().toISOString())
       .order('inicio'),
     db.from('mensagens')
       .select('direcao, autor, conteudo')
+      .eq('clinica_id', clinicaId)
       .eq('conversa_id', conversaId)
       .order('criado_em', { ascending: false })
       .limit(HISTORICO_MAX_MSGS),
@@ -211,6 +213,7 @@ async function obterOuCriarConversa(db, clinicaId, pacienteId) {
   const busca = await db
     .from('conversas')
     .select('*')
+    .eq('clinica_id', clinicaId)
     .eq('paciente_id', pacienteId)
     .in('status', ['ativa', 'transferida_humano'])
     .order('criado_em', { ascending: false })

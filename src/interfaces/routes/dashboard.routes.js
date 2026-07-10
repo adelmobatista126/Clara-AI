@@ -18,16 +18,20 @@ router.get('/resumo', async (req, res) => {
   const [ags, grade, novos, espera] = await Promise.all([
     db.from('agendamentos')
       .select('id, inicio, fim, status, origem, procedimento, pacientes(nome), profissionais(nome)')
+      .eq('clinica_id', req.clinicaId)
       .gte('inicio', iniDia).lte('inicio', fimDia)
       .order('inicio'),
     db.from('profissional_horarios')
       .select('hora_inicio, hora_fim')
+      .eq('clinica_id', req.clinicaId)
       .eq('dia_semana', new Date(`${dia}T12:00:00`).getDay()),
     db.from('pacientes')
       .select('id', { count: 'exact', head: true })
+      .eq('clinica_id', req.clinicaId)
       .gte('criado_em', iniMes),
     db.from('lista_espera')
       .select('id', { count: 'exact', head: true })
+      .eq('clinica_id', req.clinicaId)
       .eq('status', 'aguardando'),
   ]);
 
@@ -68,6 +72,7 @@ router.get('/conversas', async (req, res) => {
   const { data, error } = await db
     .from('conversas')
     .select('id, status, ultima_msg_em, canal, pacientes(nome, telefone)')
+    .eq('clinica_id', req.clinicaId)
     .order('ultima_msg_em', { ascending: false })
     .limit(15);
   if (error) return res.status(500).json({ erro: error.message });
@@ -80,6 +85,7 @@ router.get('/conversas/:id/mensagens', async (req, res) => {
   const { data, error } = await db
     .from('mensagens')
     .select('direcao, autor, conteudo, criado_em')
+    .eq('clinica_id', req.clinicaId)
     .eq('conversa_id', req.params.id)
     .order('criado_em')
     .limit(200);
@@ -99,6 +105,7 @@ router.patch('/agendamentos/:id/status', async (req, res) => {
     .from('agendamentos')
     .update({ status })
     .eq('id', req.params.id)
+    .eq('clinica_id', req.clinicaId)
     .in('status', ['agendado', 'confirmado'])
     .select()
     .single();
@@ -113,6 +120,7 @@ router.patch('/conversas/:id/encerrar', async (req, res) => {
     .from('conversas')
     .update({ status: 'encerrada' })
     .eq('id', req.params.id)
+    .eq('clinica_id', req.clinicaId)
     .select()
     .single();
   if (error) return res.status(500).json({ erro: error.message });

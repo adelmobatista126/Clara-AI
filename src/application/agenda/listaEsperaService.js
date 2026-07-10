@@ -38,6 +38,7 @@ async function preencherVaga(clinicaId, { profissionalId, inicio, fim }) {
   const { data: candidatos, error } = await db
     .from('lista_espera')
     .select('*, pacientes(nome, telefone)')
+    .eq('clinica_id', clinicaId)
     .eq('status', 'aguardando')
     .or(`profissional_id.eq.${profissionalId},profissional_id.is.null`)
     .in('periodo_preferido', [periodoDaVaga, 'qualquer'])
@@ -54,6 +55,7 @@ async function preencherVaga(clinicaId, { profissionalId, inicio, fim }) {
     .from('lista_espera')
     .update({ status: 'contatado', contatado_em: new Date().toISOString() })
     .eq('id', escolhido.id)
+    .eq('clinica_id', clinicaId)
     .eq('status', 'aguardando'); // proteção contra corrida
   if (upd.error) return { erro: upd.error.message };
 
