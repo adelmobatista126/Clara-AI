@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Clara — Painel da Clínica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --esmalte: #F7FAF9;
+    --petroleo: #0E4F4F;
+    --menta: #3FBFAD;
+    --menta-suave: #E2F4F0;
+    --grafite: #1E2726;
+    --cinza: #6B7A77;
+    --linha: #D9E5E2;
+    --alerta: #C94F3D;
+    --alerta-suave: #F9E9E6;
+    --ambar: #B98A2E;
+    --ambar-suave: #F7EEDD;
+    --branco: #FFFFFF;
+    --raio: 10px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Instrument Sans', system-ui, sans-serif;
+    background: var(--esmalte);
+    color: var(--grafite);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .mono { font-family: 'IBM Plex Mono', monospace; font-weight: 500; }
+
+  /* ---------- Cabeçalho ---------- */
+  header {
+    background: var(--petroleo);
+    color: var(--branco);
+    padding: 18px 20px 16px;
+  }
+  header .marca {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: -0.02em;
+  }
+  header .marca span { color: var(--menta); }
+  header .sub { font-size: 13px; opacity: 0.75; margin-top: 2px; }
+  .barra-dia {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 14px;
+  }
+  .barra-dia input[type="date"] {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: var(--branco);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-family: inherit;
+    font-size: 14px;
+    color-scheme: dark;
+  }
+  .barra-dia button {
+    background: var(--menta);
+    color: var(--petroleo);
+    border: none;
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-weight: 600;
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .barra-dia button:focus-visible, .acoes button:focus-visible, input:focus-visible {
+    outline: 2px solid var(--menta); outline-offset: 2px;
+  }
+
+  main { max-width: 1080px; margin: 0 auto; padding: 20px 16px 60px; }
+
+  /* ---------- Régua do dia (assinatura) ---------- */
+  .regua-wrap {
+    background: var(--branco);
+    border: 1px solid var(--linha);
+    border-radius: var(--raio);
+    padding: 16px;
+    margin-bottom: 18px;
+  }
+  .regua-titulo {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 12px;
+  }
+  .regua-titulo h2 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 16px; font-weight: 700;
+  }
+  .ocupacao { font-size: 13px; color: var(--cinza); }
+  .ocupacao b { font-size: 20px; color: var(--petroleo); }
+  .regua {
+    position: relative;
+    height: 46px;
+    background: var(--esmalte);
+    border-radius: 6px;
+    border: 1px solid var(--linha);
+  }
+  .regua .seg {
+    position: absolute; top: 6px; bottom: 6px;
+    border-radius: 4px;
+    min-width: 6px;
+  }
+  .seg.agendado   { background: var(--petroleo); opacity: 0.55; }
+  .seg.confirmado { background: var(--petroleo); }
+  .seg.concluido  { background: var(--menta); }
+  .seg.faltou     { background: var(--alerta); }
+  .seg.clara::after {
+    content: ''; position: absolute; top: -5px; left: 50%;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--menta); transform: translateX(-50%);
+  }
+  .regua-horas {
+    display: flex; justify-content: space-between;
+    font-size: 11px; color: var(--cinza); margin-top: 6px;
+  }
+  .legenda { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; font-size: 12px; color: var(--cinza); }
+  .legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+  /* ---------- KPIs ---------- */
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .kpi {
+    background: var(--branco);
+    border: 1px solid var(--linha);
+    border-radius: var(--raio);
+    padding: 12px 14px;
+  }
+  .kpi .valor { font-size: 26px; color: var(--petroleo); }
+  .kpi .rotulo { font-size: 12px; color: var(--cinza); margin-top: 2px; }
+  .kpi.destaque { background: var(--menta-suave); border-color: var(--menta); }
+  .kpi.destaque .valor { color: var(--petroleo); }
+  .kpi.ruim .valor { color: var(--alerta); }
+
+  /* ---------- Colunas ---------- */
+  .colunas { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; }
+  @media (max-width: 760px) { .colunas { grid-template-columns: 1fr; } }
+
+  .cartao {
+    background: var(--branco);
+    border: 1px solid var(--linha);
+    border-radius: var(--raio);
+    overflow: hidden;
+  }
+  .cartao h2 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 15px; font-weight: 700;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--linha);
+  }
+  .vazio { padding: 24px 16px; color: var(--cinza); font-size: 14px; text-align: center; }
+
+  /* ---------- Agenda ---------- */
+  .consulta {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--linha);
+  }
+  .consulta:last-child { border-bottom: none; }
+  .consulta .hora { font-size: 14px; color: var(--petroleo); min-width: 46px; }
+  .consulta .info { flex: 1; min-width: 0; }
+  .consulta .nome { font-weight: 600; font-size: 14px; }
+  .consulta .det { font-size: 12px; color: var(--cinza); }
+  .tag {
+    font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px;
+    white-space: nowrap;
+  }
+  .tag.agendado   { background: #EDF2F1; color: var(--cinza); }
+  .tag.confirmado { background: var(--menta-suave); color: var(--petroleo); }
+  .tag.concluido  { background: var(--menta); color: var(--branco); }
+  .tag.cancelado  { background: #EEE; color: #999; text-decoration: line-through; }
+  .tag.faltou     { background: var(--alerta-suave); color: var(--alerta); }
+  .clara-badge { font-size: 10px; color: var(--menta); font-weight: 700; letter-spacing: 0.03em; }
+  .acoes { display: flex; gap: 6px; }
+  .acoes button {
+    border: 1px solid var(--linha); background: var(--branco);
+    border-radius: 7px; padding: 5px 9px; font-size: 12px;
+    font-family: inherit; cursor: pointer; color: var(--grafite);
+  }
+  .acoes button.ok:hover { background: var(--menta-suave); border-color: var(--menta); }
+  .acoes button.falta:hover { background: var(--alerta-suave); border-color: var(--alerta); }
+
+  /* ---------- Conversas ---------- */
+  .conversa {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--linha);
+    cursor: pointer;
+  }
+  .conversa:hover { background: var(--esmalte); }
+  .conversa:last-child { border-bottom: none; }
+  .conversa .topo { display: flex; justify-content: space-between; gap: 8px; }
+  .conversa .nome { font-weight: 600; font-size: 14px; }
+  .conversa .quando { font-size: 11px; color: var(--cinza); white-space: nowrap; }
+  .tag.humano { background: var(--ambar-suave); color: var(--ambar); }
+  .tag.ativa  { background: var(--menta-suave); color: var(--petroleo); }
+
+  /* ---------- Modal (config + chat) ---------- */
+  .veu {
+    position: fixed; inset: 0; background: rgba(14,79,79,0.45);
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px; z-index: 50;
+  }
+  .modal {
+    background: var(--branco); border-radius: 14px;
+    width: 100%; max-width: 420px; max-height: 85vh;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .modal h3 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    padding: 16px; border-bottom: 1px solid var(--linha); font-size: 16px;
+  }
+  .modal .corpo { padding: 16px; overflow-y: auto; }
+  .modal label { display: block; font-size: 13px; font-weight: 600; margin: 10px 0 4px; }
+  .modal input {
+    width: 100%; padding: 9px 10px; border: 1px solid var(--linha);
+    border-radius: 8px; font-family: inherit; font-size: 14px;
+  }
+  .modal .pe { padding: 12px 16px; border-top: 1px solid var(--linha); display: flex; gap: 8px; justify-content: flex-end; }
+  .modal .pe button {
+    padding: 8px 16px; border-radius: 8px; font-family: inherit;
+    font-weight: 600; font-size: 14px; cursor: pointer; border: 1px solid var(--linha);
+    background: var(--branco);
+  }
+  .modal .pe button.principal { background: var(--petroleo); color: var(--branco); border-color: var(--petroleo); }
+  .balao { max-width: 85%; padding: 8px 12px; border-radius: 12px; margin-bottom: 8px; font-size: 13px; }
+  .balao.entrada { background: var(--esmalte); border: 1px solid var(--linha); }
+  .balao.saida { background: var(--menta-suave); margin-left: auto; }
+  .balao .quem { font-size: 10px; color: var(--cinza); margin-bottom: 2px; font-weight: 600; }
+
+  .erro-banner {
+    background: var(--alerta-suave); color: var(--alerta);
+    border: 1px solid var(--alerta); border-radius: var(--raio);
+    padding: 10px 14px; margin-bottom: 14px; font-size: 14px; display: none;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .cartao, .kpi, .regua-wrap { animation: subir 0.25s ease both; }
+    @keyframes subir { from { opacity: 0; transform: translateY(6px); } }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="marca">Clara<span>.</span></div>
+  <div class="sub" id="nomeClinica">Painel da clínica</div>
+  <div class="barra-dia">
+    <input type="date" id="seletorDia" />
+    <button id="btnAtualizar">Atualizar</button>
+    <button id="btnConfig" style="background:rgba(255,255,255,0.15);color:#fff;">⚙</button>
+  </div>
+</header>
+
+<main>
+  <div class="erro-banner" id="erroBanner"></div>
+
+  <!-- Régua do dia -->
+  <section class="regua-wrap">
+    <div class="regua-titulo">
+      <h2>Régua do dia</h2>
+      <div class="ocupacao">ocupação <b class="mono" id="kOcupacao">–</b><span class="mono">%</span></div>
+    </div>
+    <div class="regua" id="regua"></div>
+    <div class="regua-horas"><span>7h</span><span>10h</span><span>13h</span><span>16h</span><span>20h</span></div>
+    <div class="legenda">
+      <span><i style="background:var(--petroleo);opacity:.55"></i>Agendada</span>
+      <span><i style="background:var(--petroleo)"></i>Confirmada</span>
+      <span><i style="background:var(--menta)"></i>Concluída</span>
+      <span><i style="background:var(--alerta)"></i>Falta</span>
+      <span><i style="background:var(--menta);border-radius:50%"></i> ponto = agendada pela Clara</span>
+    </div>
+  </section>
+
+  <!-- KPIs -->
+  <section class="kpis">
+    <div class="kpi"><div class="valor mono" id="kConsultas">–</div><div class="rotulo">Consultas hoje</div></div>
+    <div class="kpi"><div class="valor mono" id="kConfirmadas">–</div><div class="rotulo">Confirmadas</div></div>
+    <div class="kpi destaque"><div class="valor mono" id="kClara">–</div><div class="rotulo">Agendadas pela Clara</div></div>
+    <div class="kpi ruim"><div class="valor mono" id="kFaltas">–</div><div class="rotulo">Faltas</div></div>
+    <div class="kpi"><div class="valor mono" id="kNovos">–</div><div class="rotulo">Novos pacientes no mês</div></div>
+    <div class="kpi"><div class="valor mono" id="kEspera">–</div><div class="rotulo">Na lista de espera</div></div>
+  </section>
+
+  <div class="colunas">
+    <!-- Agenda -->
+    <section class="cartao">
+      <h2>Agenda</h2>
+      <div id="listaAgenda"><div class="vazio">Carregando…</div></div>
+    </section>
+
+    <!-- Conversas -->
+    <section class="cartao">
+      <h2>Conversas recentes</h2>
+      <div id="listaConversas"><div class="vazio">Carregando…</div></div>
+    </section>
+  </div>
+</main>
+
+<!-- Modal de configuração -->
+<div class="veu" id="modalConfig" style="display:none;">
+  <div class="modal">
+    <h3>Conectar ao painel</h3>
+    <div class="corpo">
+      <label>URL da API (Railway)</label>
+      <input id="cfgUrl" placeholder="https://sua-api.railway.app" />
+      <label>Chave de acesso</label>
+      <input id="cfgChave" type="password" placeholder="CLARA_INTERNAL_API_KEY" />
+      <label>ID da clínica</label>
+      <input id="cfgClinica" placeholder="uuid da clínica" />
+    </div>
+    <div class="pe">
+      <button class="principal" id="btnSalvarConfig">Salvar e conectar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de conversa -->
+<div class="veu" id="modalChat" style="display:none;">
+  <div class="modal">
+    <h3 id="chatTitulo">Conversa</h3>
+    <div class="corpo" id="chatCorpo"></div>
+    <div class="pe">
+      <button id="btnDevolver">Devolver para a Clara</button>
+      <button class="principal" id="btnFecharChat">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const REGUA_INI = 7, REGUA_FIM = 20; // 7h–20h
+  let conversaAberta = null;
+
+  // ---------- Config ----------
+  const cfg = {
+    get url()     { return localStorage.getItem('clara_url') || ''; },
+    get chave()   { return localStorage.getItem('clara_chave') || ''; },
+    get clinica() { return localStorage.getItem('clara_clinica') || ''; },
+    salvar(u, k, c) {
+      localStorage.setItem('clara_url', u.replace(/\/$/, ''));
+      localStorage.setItem('clara_chave', k);
+      localStorage.setItem('clara_clinica', c);
+    },
+    ok() { return this.url && this.chave && this.clinica; },
+  };
+
+  async function api(caminho, opcoes = {}) {
+    const resp = await fetch(cfg.url + caminho, {
+      ...opcoes,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': cfg.chave,
+        'x-clinica-id': cfg.clinica,
+        ...(opcoes.headers || {}),
+      },
+    });
+    if (!resp.ok) {
+      const corpo = await resp.json().catch(() => ({}));
+      throw new Error(corpo.erro || ('HTTP ' + resp.status));
+    }
+    return resp.json();
+  }
+
+  function mostrarErro(msg) {
+    const b = $('erroBanner');
+    b.textContent = msg;
+    b.style.display = msg ? 'block' : 'none';
+  }
+
+  // ---------- Régua ----------
+  function desenharRegua(agenda) {
+    const regua = $('regua');
+    regua.innerHTML = '';
+    const total = (REGUA_FIM - REGUA_INI) * 60;
+    for (const a of agenda) {
+      if (a.status === 'cancelado') continue;
+      const ini = new Date(a.inicio), fim = new Date(a.fim);
+      const minIni = (ini.getHours() - REGUA_INI) * 60 + ini.getMinutes();
+      const dur = Math.max((fim - ini) / 60000, 10);
+      if (minIni < 0 || minIni > total) continue;
+      const seg = document.createElement('div');
+      seg.className = 'seg ' + a.status + (a.origem === 'clara' ? ' clara' : '');
+      seg.style.left = (minIni / total * 100) + '%';
+      seg.style.width = (dur / total * 100) + '%';
+      seg.title = hora(a.inicio) + ' — ' + (a.pacientes?.nome || 'Paciente') + ' (' + a.status + ')';
+      regua.appendChild(seg);
+    }
+  }
+
+  // ---------- Agenda ----------
+  function hora(dt) {
+    return new Date(dt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function desenharAgenda(agenda) {
+    const alvo = $('listaAgenda');
+    if (!agenda.length) {
+      alvo.innerHTML = '<div class="vazio">Nenhuma consulta neste dia. A Clara está de olho na lista de espera. 😉</div>';
+      return;
+    }
+    alvo.innerHTML = '';
+    for (const a of agenda) {
+      const linha = document.createElement('div');
+      linha.className = 'consulta';
+      const podeAgir = ['agendado', 'confirmado'].includes(a.status);
+      linha.innerHTML =
+        '<div class="hora mono">' + hora(a.inicio) + '</div>' +
+        '<div class="info">' +
+          '<div class="nome">' + escapar(a.pacientes?.nome || 'Sem nome') +
+          (a.origem === 'clara' ? ' <span class="clara-badge">· CLARA</span>' : '') + '</div>' +
+          '<div class="det">' + escapar(a.procedimento || '') +
+          (a.profissionais?.nome ? ' · ' + escapar(a.profissionais.nome) : '') + '</div>' +
+        '</div>' +
+        '<span class="tag ' + a.status + '">' + rotuloStatus(a.status) + '</span>' +
+        (podeAgir
+          ? '<div class="acoes">' +
+              '<button class="ok" data-id="' + a.id + '" data-st="concluido" title="Marcar como concluída">✓</button>' +
+              '<button class="falta" data-id="' + a.id + '" data-st="faltou" title="Marcar falta">✗</button>' +
+            '</div>'
+          : '');
+      alvo.appendChild(linha);
+    }
+    alvo.querySelectorAll('.acoes button').forEach((b) => {
+      b.addEventListener('click', async () => {
+        try {
+          await api('/dashboard/agendamentos/' + b.dataset.id + '/status', {
+            method: 'PATCH',
+            body: JSON.stringify({ status: b.dataset.st }),
+          });
+          carregar();
+        } catch (e) { mostrarErro('Não foi possível atualizar: ' + e.message); }
+      });
+    });
+  }
+
+  function rotuloStatus(s) {
+    return { agendado: 'Agendada', confirmado: 'Confirmada', concluido: 'Concluída',
+             cancelado: 'Cancelada', faltou: 'Falta' }[s] || s;
+  }
+
+  // ---------- Conversas ----------
+  function quandoRelativo(dt) {
+    const min = Math.round((Date.now() - new Date(dt)) / 60000);
+    if (min < 1) return 'agora';
+    if (min < 60) return min + ' min';
+    if (min < 1440) return Math.round(min / 60) + ' h';
+    return Math.round(min / 1440) + ' d';
+  }
+
+  async function carregarConversas() {
+    const alvo = $('listaConversas');
+    try {
+      const { conversas } = await api('/dashboard/conversas');
+      if (!conversas.length) {
+        alvo.innerHTML = '<div class="vazio">Nenhuma conversa ainda. Divulgue o WhatsApp da clínica!</div>';
+        return;
+      }
+      alvo.innerHTML = '';
+      for (const c of conversas) {
+        const el = document.createElement('div');
+        el.className = 'conversa';
+        const tag = c.status === 'transferida_humano'
+          ? '<span class="tag humano">Com a equipe</span>'
+          : c.status === 'ativa' ? '<span class="tag ativa">Com a Clara</span>' : '';
+        el.innerHTML =
+          '<div class="topo"><span class="nome">' + escapar(c.pacientes?.nome || c.pacientes?.telefone || 'Paciente') +
+          '</span><span class="quando">' + quandoRelativo(c.ultima_msg_em) + '</span></div>' +
+          '<div style="margin-top:4px;">' + tag + '</div>';
+        el.addEventListener('click', () => abrirChat(c));
+        alvo.appendChild(el);
+      }
+    } catch (e) {
+      alvo.innerHTML = '<div class="vazio">Erro ao carregar conversas.</div>';
+    }
+  }
+
+  async function abrirChat(c) {
+    conversaAberta = c;
+    $('chatTitulo').textContent = c.pacientes?.nome || c.pacientes?.telefone || 'Conversa';
+    $('btnDevolver').style.display = c.status === 'transferida_humano' ? '' : 'none';
+    $('chatCorpo').innerHTML = '<div class="vazio">Carregando…</div>';
+    $('modalChat').style.display = 'flex';
+    try {
+      const { mensagens } = await api('/dashboard/conversas/' + c.id + '/mensagens');
+      const corpo = $('chatCorpo');
+      corpo.innerHTML = '';
+      for (const m of mensagens) {
+        const b = document.createElement('div');
+        b.className = 'balao ' + m.direcao;
+        b.innerHTML = '<div class="quem">' +
+          (m.autor === 'paciente' ? 'Paciente' : m.autor === 'clara' ? 'Clara' : 'Equipe') +
+          ' · ' + hora(m.criado_em) + '</div>' + escapar(m.conteudo);
+        corpo.appendChild(b);
+      }
+      corpo.scrollTop = corpo.scrollHeight;
+    } catch (e) {
+      $('chatCorpo').innerHTML = '<div class="vazio">Erro ao carregar mensagens.</div>';
+    }
+  }
+
+  // ---------- Carga principal ----------
+  async function carregar() {
+    if (!cfg.ok()) { $('modalConfig').style.display = 'flex'; return; }
+    mostrarErro('');
+    const dia = $('seletorDia').value;
+    try {
+      const r = await api('/dashboard/resumo?dia=' + dia);
+      $('kOcupacao').textContent = r.ocupacao_pct;
+      $('kConsultas').textContent = r.consultas;
+      $('kConfirmadas').textContent = r.confirmadas;
+      $('kClara').textContent = r.agendadas_pela_clara;
+      $('kFaltas').textContent = r.faltas;
+      $('kNovos').textContent = r.novos_pacientes_mes;
+      $('kEspera').textContent = r.lista_espera;
+      desenharRegua(r.agenda);
+      desenharAgenda(r.agenda);
+      carregarConversas();
+    } catch (e) {
+      mostrarErro('Falha ao conectar: ' + e.message + ' — confira a configuração (⚙).');
+    }
+  }
+
+  function escapar(s) {
+    return String(s || '').replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // ---------- Eventos ----------
+  $('btnAtualizar').addEventListener('click', carregar);
+  $('seletorDia').addEventListener('change', carregar);
+  $('btnConfig').addEventListener('click', () => {
+    $('cfgUrl').value = cfg.url;
+    $('cfgChave').value = cfg.chave;
+    $('cfgClinica').value = cfg.clinica;
+    $('modalConfig').style.display = 'flex';
+  });
+  $('btnSalvarConfig').addEventListener('click', () => {
+    cfg.salvar($('cfgUrl').value.trim(), $('cfgChave').value.trim(), $('cfgClinica').value.trim());
+    $('modalConfig').style.display = 'none';
+    carregar();
+  });
+  $('btnFecharChat').addEventListener('click', () => { $('modalChat').style.display = 'none'; });
+  $('btnDevolver').addEventListener('click', async () => {
+    if (!conversaAberta) return;
+    try {
+      await api('/dashboard/conversas/' + conversaAberta.id + '/encerrar', { method: 'PATCH' });
+      $('modalChat').style.display = 'none';
+      carregarConversas();
+    } catch (e) { mostrarErro('Não foi possível devolver: ' + e.message); }
+  });
+
+  // ---------- Início ----------
+  $('seletorDia').value = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD local
+  carregar();
+  setInterval(carregar, 60_000); // atualização automática a cada 1min
+})();
+</script>
+</body>
+</html>
