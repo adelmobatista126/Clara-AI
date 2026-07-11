@@ -36,6 +36,8 @@ router.post('/whatsapp', async (req, res) => {
 
   try {
     const entradas = req.body?.entry || [];
+    console.log(`[webhook] POST recebido: ${entradas.length} entrada(s)`);
+
     for (const entrada of entradas) {
       for (const mudanca of entrada.changes || []) {
         const valor = mudanca.value;
@@ -44,17 +46,23 @@ router.post('/whatsapp', async (req, res) => {
         // Eventos de status (enviada/entregue/lida/falhou) — só logamos por enquanto
         if (valor?.statuses) {
           for (const st of valor.statuses) {
+            console.log(`[webhook] status de mensagem: ${st.status}`);
             if (st.status === 'failed') {
               console.error('[whatsapp] falha na entrega:', JSON.stringify(st.errors));
             }
           }
         }
 
-        if (!valor?.messages) continue; // este "change" não trouxe mensagem nova
+        if (!valor?.messages) {
+          console.log('[webhook] change sem "messages" (provavelmente só status) — ignorando');
+          continue;
+        }
+
+        console.log(`[webhook] ${valor.messages.length} mensagem(ns) recebida(s) de phone_number_id=${phoneNumberId}`);
 
         const clinicaId = clinicaDoNumero(phoneNumberId);
         if (!clinicaId) {
-          console.error(`[webhook] phone_number_id desconhecido: ${phoneNumberId}`);
+          console.error(`[webhook] phone_number_id desconhecido: ${phoneNumberId} — confira CLARA_INSTANCIAS`);
           continue;
         }
 

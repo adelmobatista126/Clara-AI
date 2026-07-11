@@ -15,6 +15,7 @@ const HISTORICO_MAX_MSGS = 30;
 // Entrada principal: processa mensagem(ns) recebida(s)
 // ------------------------------------------------------------
 async function processarMensagem({ clinicaId, telefone, texto, msgExternaId, nomePush }) {
+  console.log(`[atendimento] processando: clinica=${clinicaId} telefone=${telefone} texto="${texto.slice(0, 80)}"`);
   const db = clientDaClinica(clinicaId);
 
   // 1. Idempotência: webhook duplicado é ignorado
@@ -58,6 +59,7 @@ async function processarMensagem({ clinicaId, telefone, texto, msgExternaId, nom
     db,
   });
   if (resposta.erro) {
+    console.error(`[atendimento] IA falhou: ${resposta.erro}`);
     // Falha da IA nunca deixa paciente sem resposta
     const fallback = 'Desculpe, tive um probleminha técnico aqui. Já avisei a equipe e alguém te responde em instantes! 🙏';
     await registrarESviar(db, clinicaId, conversa.id, telefone, fallback, 'clara');
@@ -72,6 +74,7 @@ async function processarMensagem({ clinicaId, telefone, texto, msgExternaId, nom
     await registrarESviar(db, clinicaId, conversa.id, telefone, resposta.texto, 'clara');
   }
 
+  console.log(`[atendimento] concluído: telefone=${telefone} respondeu=${!!resposta.texto}`);
   return { ok: true };
 }
 
@@ -243,6 +246,7 @@ async function registrarESviar(db, clinicaId, conversaId, telefone, texto, autor
 
   try {
     await enviarTexto(telefone, texto);
+    console.log(`[whatsapp] enviado com sucesso para ${telefone}`);
   } catch (e) {
     console.error('[whatsapp] falha no envio:', e.message);
   }
