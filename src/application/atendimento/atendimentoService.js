@@ -21,16 +21,25 @@ async function processarMensagem({ clinicaId, telefone, texto, msgExternaId, nom
   // 1. Idempotência: webhook duplicado é ignorado
   if (msgExternaId) {
     const dup = await db.from('mensagens').select('id').eq('msg_externa_id', msgExternaId).limit(1);
-    if (!dup.error && dup.data.length) return { ignorada: 'duplicada' };
+    if (!dup.error && dup.data.length) {
+      console.log('[atendimento] parou: mensagem duplicada (idempotência)');
+      return { ignorada: 'duplicada' };
+    }
   }
 
   // 2. Paciente: busca ou cria pelo telefone
   const paciente = await obterOuCriarPaciente(db, clinicaId, telefone, nomePush);
-  if (paciente.erro) return paciente;
+  if (paciente.erro) {
+    console.error('[atendimento] parou: erro ao obter/criar paciente:', paciente.erro);
+    return paciente;
+  }
 
   // 3. Conversa ativa: busca ou cria
   const conversa = await obterOuCriarConversa(db, clinicaId, paciente.id);
-  if (conversa.erro) return conversa;
+  if (conversa.erro) {
+    console.error('[atendimento] parou: erro ao obter/criar conversa:', conversa.erro);
+    return conversa;
+  }
 
   // 4. Salva a mensagem de entrada (histórico completo, sempre)
   const insMsg = await db.from('mensagens').insert({
@@ -41,17 +50,25 @@ async function processarMensagem({ clinicaId, telefone, texto, msgExternaId, nom
     conteudo: texto,
     msg_externa_id: msgExternaId || null,
   });
-  if (insMsg.error) return { erro: insMsg.error.message };
+  if (insMsg.error) {
+    console.error('[atendimento] parou: erro ao salvar mensagem de entrada:', insMsg.error.message);
+    return { erro: insMsg.error.message };
+  }
 
   // 5. Conversa nas mãos da equipe humana → Clara silencia
   if (conversa.status === 'transferida_humano') {
+    console.log('[atendimento] parou: conversa transferida para humano, Clara não responde');
     return { silenciada: 'conversa com equipe humana' };
   }
 
   // 6. Monta contexto e chama a IA
   const contexto = await montarContexto(db, clinicaId, paciente, conversa.id);
-  if (contexto.erro) return contexto;
+  if (contexto.erro) {
+    console.error('[atendimento] parou: erro ao montar contexto:', contexto.erro);
+    return contexto;
+  }
 
+  console.log('[atendimento] contexto montado, chamando Claude API...');
   const resposta = await conversarComClaude(contexto, {
     clinicaId,
     pacienteId: paciente.id,
