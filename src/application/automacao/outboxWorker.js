@@ -4,7 +4,7 @@
 // marca enviado/erro. Retry com backoff. Nada se perde.
 // ============================================================
 const { clientDaClinica } = require('../../infrastructure/supabase');
-const { enviarTexto } = require('../../infrastructure/evolutionApi');
+const { enviarTexto } = require('../../infrastructure/whatsapp');
 const { renderizar } = require('../../domain/automacao/templates');
 
 const MAX_TENTATIVAS = 3;
@@ -13,14 +13,15 @@ const BACKOFF_MIN = 5; // minutos * nº da tentativa
 /**
  * Processa a fila de UMA clínica.
  * @param {Object} clinica - { id, nome, config }
+ *
+ * NOTA: estas mensagens são iniciadas pela clínica (fora da janela de
+ * 24h de atendimento ao paciente). A API oficial da Meta exige, nesse
+ * caso, um "template" pré-aprovado — enviar texto livre aqui funciona
+ * apenas enquanto a janela de 24h do paciente ainda está aberta.
+ * Migrar para enviarTemplate() assim que os templates forem aprovados.
  */
 async function processarFila(clinica) {
   const db = clientDaClinica(clinica.id);
-  const instancia = clinica.config?.evolution_instancia;
-  if (!instancia) {
-    console.error(`[outbox] clínica ${clinica.nome} sem config.evolution_instancia`);
-    return { enviadas: 0 };
-  }
 
   const { data: pendentes, error } = await db
     .from('outbox')
@@ -51,7 +52,7 @@ async function processarFila(clinica) {
     }
 
     try {
-      await enviarTexto(instancia, item.pacientes.telefone, texto);
+      await enviarTexto(item.pacientes.telefone, texto);
       await db.from('outbox')
         .update({ status: 'enviado', enviado_em: new Date().toISOString() })
         .eq('id', item.id);

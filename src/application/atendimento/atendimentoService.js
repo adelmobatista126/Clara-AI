@@ -3,7 +3,7 @@
 // Orquestra: paciente → contexto → Claude (com ferramentas) → resposta.
 // ============================================================
 const { clientDaClinica } = require('../../infrastructure/supabase');
-const { enviarTexto } = require('../../infrastructure/evolutionApi');
+const { enviarTexto } = require('../../infrastructure/whatsapp');
 const { montarSystemPrompt } = require('../../domain/atendimento/persona');
 const { FERRAMENTAS, executar } = require('../../domain/atendimento/ferramentas');
 
@@ -14,7 +14,7 @@ const HISTORICO_MAX_MSGS = 30;
 // ------------------------------------------------------------
 // Entrada principal: processa mensagem(ns) recebida(s)
 // ------------------------------------------------------------
-async function processarMensagem({ clinicaId, instancia, telefone, texto, msgExternaId, nomePush }) {
+async function processarMensagem({ clinicaId, telefone, texto, msgExternaId, nomePush }) {
   const db = clientDaClinica(clinicaId);
 
   // 1. Idempotência: webhook duplicado é ignorado
@@ -60,7 +60,7 @@ async function processarMensagem({ clinicaId, instancia, telefone, texto, msgExt
   if (resposta.erro) {
     // Falha da IA nunca deixa paciente sem resposta
     const fallback = 'Desculpe, tive um probleminha técnico aqui. Já avisei a equipe e alguém te responde em instantes! 🙏';
-    await registrarESviar(db, clinicaId, conversa.id, instancia, telefone, fallback, 'clara');
+    await registrarESviar(db, clinicaId, conversa.id, telefone, fallback, 'clara');
     await db.from('conversas')
       .update({ status: 'transferida_humano', transferida_em: new Date().toISOString() })
       .eq('id', conversa.id);
@@ -69,7 +69,7 @@ async function processarMensagem({ clinicaId, instancia, telefone, texto, msgExt
 
   // 7. Salva e envia a resposta da Clara
   if (resposta.texto) {
-    await registrarESviar(db, clinicaId, conversa.id, instancia, telefone, resposta.texto, 'clara');
+    await registrarESviar(db, clinicaId, conversa.id, telefone, resposta.texto, 'clara');
   }
 
   return { ok: true };
@@ -231,7 +231,7 @@ async function obterOuCriarConversa(db, clinicaId, pacienteId) {
   return nova.data;
 }
 
-async function registrarESviar(db, clinicaId, conversaId, instancia, telefone, texto, autor) {
+async function registrarESviar(db, clinicaId, conversaId, telefone, texto, autor) {
   const ins = await db.from('mensagens').insert({
     clinica_id: clinicaId,
     conversa_id: conversaId,
@@ -242,9 +242,9 @@ async function registrarESviar(db, clinicaId, conversaId, instancia, telefone, t
   if (ins.error) console.error('[mensagens] falha ao salvar saída:', ins.error.message);
 
   try {
-    await enviarTexto(instancia, telefone, texto);
+    await enviarTexto(telefone, texto);
   } catch (e) {
-    console.error('[evolution] falha no envio:', e.message);
+    console.error('[whatsapp] falha no envio:', e.message);
   }
 }
 
