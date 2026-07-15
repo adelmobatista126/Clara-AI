@@ -14,8 +14,8 @@ const CODIGO_CONFLITO = '23P01'; // exclusion_violation (constraint sem_conflito
 // ------------------------------------------------------------
 async function horariosDisponiveis(clinicaId, { profissionalId, de, ate }) {
   const db = clientDaClinica(clinicaId);
-  const dtDe = new Date(de);
-  const dtAte = new Date(ate);
+  const dtDe = new Date(`${String(de).slice(0, 10)}T00:00:00`);
+  const dtAte = new Date(`${String(ate).slice(0, 10)}T23:59:59`);
 
   const [grade, ags, blqs] = await Promise.all([
     db.from('profissional_horarios').select('*').eq('clinica_id', clinicaId).eq('profissional_id', profissionalId),
