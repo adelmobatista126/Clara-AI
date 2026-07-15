@@ -5,11 +5,43 @@
 const agenda = require('../../application/agenda/agendaService');
 const listaEspera = require('../../application/agenda/listaEsperaService');
 
+const FUSO = 'America/Sao_Paulo';
+
+// ---------- Formatação p/ o modelo (sempre horário de Brasília) ----------
+function horaLocal(dt) {
+  return new Date(dt).toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: FUSO,
+  });
+}
+
+function dataLocal(dt) {
+  return new Date(dt).toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: '2-digit',
+    month: '2-digit',
+    timeZone: FUSO,
+  });
+}
+
+/**
+ * Converte { dia:'YYYY-MM-DD', slots:[{inicio,fim}] } em texto legível.
+ * O modelo recebe horários prontos e NUNCA converte fuso de cabeça.
+ */
+function formatarDias(dias = []) {
+  return dias.map(({ dia, slots }) => ({
+    dia,
+    dia_semana: dataLocal(`${dia}T12:00:00`),
+    horarios: slots.map((s) => horaLocal(s.inicio)),
+  }));
+}
+
 // ---------- Definições (JSON Schema p/ Claude API) ----------
 const FERRAMENTAS = [
   {
     name: 'consultar_horarios',
-    description: 'Consulta os horários disponíveis de um dentista em um intervalo de datas. Use SEMPRE antes de afirmar qualquer horário ao paciente.',
+    description: 'Consulta os horários disponíveis de um dentista em um intervalo de datas. Use SEMPRE antes de afirmar qualquer horário ao paciente. Os horários retornados já estão no fuso de Brasília — repasse-os exatamente como recebidos, sem converter.',
     input_schema: {
       type: 'object',
       properties: {
@@ -28,7 +60,7 @@ const FERRAMENTAS = [
       properties: {
         profissional_id: { type: 'string' },
         procedimento: { type: 'string' },
-        inicio: { type: 'string', description: 'data/hora ISO 8601, ex: 2026-07-15T14:00:00-03:00' },
+        inicio: { type: 'string', description: 'data/hora ISO 8601 COM offset de Brasília, ex: 2026-07-15T14:00:00-03:00' },
         duracao_min: { type: 'integer', default: 30 },
       },
       required: ['profissional_id', 'procedimento', 'inicio'],
@@ -41,7 +73,7 @@ const FERRAMENTAS = [
       type: 'object',
       properties: {
         agendamento_id: { type: 'string', description: 'id do agendamento (ver agendamentos futuros no contexto)' },
-        novo_inicio: { type: 'string', description: 'data/hora ISO 8601' },
+        novo_inicio: { type: 'string', description: 'data/hora ISO 8601 COM offset de Brasília, ex: 2026-07-15T14:00:00-03:00' },
       },
       required: ['agendamento_id', 'novo_inicio'],
     },
@@ -100,15 +132,18 @@ async function executar(nome, input, ctx) {
   const { clinicaId, pacienteId, conversaId, db } = ctx;
 
   switch (nome) {
-    case 'consultar_horarios':
-      return agenda.horariosDisponiveis(clinicaId, {
+    case 'consultar_horarios': {
+      const r = await agenda.horariosDisponiveis(clinicaId, {
         profissionalId: input.profissional_id,
         de: input.de,
         ate: input.ate,
       });
+      if (r.erro) return r;
+      return { fuso: 'horário de Brasília', dias: formatarDias(r.dias) };
+    }
 
-    case 'agendar_consulta':
-      return agenda.agendar(clinicaId, {
+    case 'agendar_consulta': {
+      const r = await agenda.agendar(clinicaId, {
         pacienteId,
         profissionalId: input.profissional_id,
         procedimento: input.procedimento,
@@ -116,11 +151,37 @@ async function executar(nome, input, ctx) {
         duracaoMin: input.duracao_min || 30,
         origem: 'clara',
       });
+      if (r.conflito) {
+        return { conflito: true, fuso: 'horário de Brasília', alternativas: formatarDias(r.alternativas) };
+      }
+      if (r.agendamento) {
+        return {
+          agendamento: {
+            ...r.agendamento,
+            inicio_local: `${dataLocal(r.agendamento.inicio)} às ${horaLocal(r.agendamento.inicio)} (horário de Brasília)`,
+          },
+        };
+      }
+      return r;
+    }
 
-    case 'reagendar_consulta':
-      return agenda.reagendar(clinicaId, input.agendamento_id, {
+    case 'reagendar_consulta': {
+      const r = await agenda.reagendar(clinicaId, input.agendamento_id, {
         novoInicio: input.novo_inicio,
       });
+      if (r.conflito) {
+        return { conflito: true, fuso: 'horário de Brasília', alternativas: formatarDias(r.alternativas) };
+      }
+      if (r.agendamento) {
+        return {
+          agendamento: {
+            ...r.agendamento,
+            inicio_local: `${dataLocal(r.agendamento.inicio)} às ${horaLocal(r.agendamento.inicio)} (horário de Brasília)`,
+          },
+        };
+      }
+      return r;
+    }
 
     case 'cancelar_consulta':
       return agenda.cancelar(clinicaId, input.agendamento_id, { motivo: input.motivo });
