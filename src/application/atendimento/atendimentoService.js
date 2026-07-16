@@ -90,6 +90,15 @@ async function processarMensagem({ clinicaId, telefone, texto, msgExternaId, nom
   if (resposta.texto) {
     await registrarESviar(db, clinicaId, conversa.id, telefone, resposta.texto, 'clara');
   }
+  if (resposta.ferramentasUsadas && resposta.ferramentasUsadas.length) {
+    await db.from('mensagens').insert({
+      clinica_id: clinicaId,
+      conversa_id: conversa.id,
+      direcao: 'saida',
+      autor: 'sistema',
+      conteudo: '[registro interno de ferramentas] ' + JSON.stringify(resposta.ferramentasUsadas),
+    });
+  }
 
   console.log(`[atendimento] concluído: telefone=${telefone} respondeu=${!!resposta.texto}`);
   return { ok: true };
@@ -100,6 +109,7 @@ async function processarMensagem({ clinicaId, telefone, texto, msgExternaId, nom
 // ------------------------------------------------------------
 async function conversarComClaude(contexto, ctxFerramentas) {
   const mensagens = contexto.historico;
+  const ferramentasUsadas = [];
 
   for (let rodada = 0; rodada < MAX_RODADAS_FERRAMENTA; rodada++) {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
@@ -132,7 +142,7 @@ async function conversarComClaude(contexto, ctxFerramentas) {
         .map((b) => b.text)
         .join('\n')
         .trim();
-      return { texto };
+      return { texto, ferramentasUsadas };
     }
 
     // Executa cada ferramenta e devolve os resultados
@@ -145,6 +155,7 @@ async function conversarComClaude(contexto, ctxFerramentas) {
       } catch (e) {
         resultado = { erro: e.message };
       }
+      ferramentasUsadas.push({ ferramenta: uso.name, input: uso.input, resultado });
       resultados.push({
         type: 'tool_result',
         tool_use_id: uso.id,
