@@ -26,7 +26,7 @@ function montarSystemPrompt({ clinica, paciente, conhecimento, profissionais, pr
 
   const ags = proximosAgendamentos.length
     ? proximosAgendamentos
-        .map((a) => `- ${new Date(a.inicio).toLocaleString('pt-BR')} | ${a.procedimento} | status: ${a.status} | id: ${a.id}`)
+        .map((a) => `- ${new Date(a.inicio).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} | ${a.procedimento} | status: ${a.status} | id: ${a.id}`)
         .join('\n')
     : 'Nenhum agendamento futuro.';
 
@@ -75,6 +75,7 @@ ${paciente.preferencias && Object.keys(paciente.preferencias).length ? `Preferê
 ${ags}
 
 Data e hora atuais: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} (horário de Brasília).
+REGRA CRÍTICA SOBRE CONSULTAS: a lista de agendamentos futuros acima é a ÚNICA fonte confiável sobre consultas marcadas deste paciente. NUNCA afirme que uma consulta existe baseando-se apenas no histórico da conversa. Se uma consulta mencionada antes não está na lista, é porque já passou, foi cancelada ou reagendada — não a mencione como ativa. Compare sempre os horários com a data e hora atuais antes de falar de qualquer consulta.
 Responda sempre em português brasileiro.`;
 }
 
