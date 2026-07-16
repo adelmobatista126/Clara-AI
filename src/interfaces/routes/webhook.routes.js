@@ -5,6 +5,7 @@
 // ============================================================
 const { Router } = require('express');
 const { processarMensagem } = require('../../application/atendimento/atendimentoService');
+const { transcreverAudioMeta } = require('../../infrastructure/audio');
 
 const router = Router();
 
@@ -70,7 +71,18 @@ router.post('/whatsapp', async (req, res) => {
 
         for (const msg of valor.messages) {
           const telefone = msg.from;
-          const texto = msg.text?.body || null;
+          let texto = msg.text?.body || null;
+
+          if (!texto && msg.type === 'audio' && msg.audio?.id) {
+            console.log('[webhook] audio recebido, transcrevendo...');
+            const t = await transcreverAudioMeta(msg.audio.id);
+            if (t.texto) { texto = t.texto; console.log('[webhook] transcrito: ' + texto.slice(0, 80)); }
+            else {
+              console.error('[webhook] falha na transcricao: ' + t.erro);
+              agendarProcessamento({ clinicaId, telefone, texto: '[paciente enviou um áudio mas a transcrição falhou — peça desculpas e peça para escrever em texto]', msgExternaId: msg.id, nomePush });
+              continue;
+            }
+          }
 
           if (!texto) {
             agendarProcessamento({
