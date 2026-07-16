@@ -69,20 +69,27 @@ async function processarMensagem({ clinicaId, telefone, texto, msgExternaId, nom
   }
 
   console.log('[atendimento] contexto montado, chamando Claude API...');
-  const resposta = await conversarComClaude(contexto, {
-    clinicaId,
-    pacienteId: paciente.id,
-    conversaId: conversa.id,
-    db,
-  });
+  let resposta;
+  for (let tentativa = 1; tentativa <= 3; tentativa++) {
+    resposta = await conversarComClaude(contexto, {
+      clinicaId,
+      pacienteId: paciente.id,
+      conversaId: conversa.id,
+      db,
+    });
+    const erroTemporario = resposta.erro && /529|429|500|overloaded|timeout/i.test(String(resposta.erro));
+    if (!erroTemporario) break;
+    if (tentativa < 3) {
+      const espera = tentativa === 1 ? 1000 : 3000;
+      console.warn(`[atendimento] erro temporario da IA (tentativa ${tentativa}/3), tentando de novo em ${espera}ms...`);
+      await new Promise(r => setTimeout(r, espera));
+    }
+  }
   if (resposta.erro) {
     console.error(`[atendimento] IA falhou: ${resposta.erro}`);
     // Falha da IA nunca deixa paciente sem resposta
-    const fallback = 'Desculpe, tive um probleminha técnico aqui. Já avisei a equipe e alguém te responde em instantes! 🙏';
+    const fallback = 'Opa, tive uma instabilidade rapidinha aqui! Pode mandar sua última mensagem de novo? 🙏';
     await registrarESviar(db, clinicaId, conversa.id, telefone, fallback, 'clara');
-    await db.from('conversas')
-      .update({ status: 'transferida_humano', transferida_em: new Date().toISOString() })
-      .eq('id', conversa.id);
     return resposta;
   }
 
