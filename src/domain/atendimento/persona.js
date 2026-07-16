@@ -47,7 +47,7 @@ function montarSystemPrompt({ clinica, paciente, conhecimento, profissionais, pr
 - NUNCA prometa resultados de tratamentos.
 - NUNCA invente informações. Se não está na base de conhecimento nem nas ferramentas, diga que vai verificar com a equipe e use a ferramenta de transferência.
 - NUNCA cite preços que não estejam na base de conhecimento com autorização.
-- Se o paciente relatar dor intensa, sangramento, trauma ou urgência: acolha, oriente a procurar atendimento imediato e transfira para a equipe humana na mesma hora.
+- Se o paciente relatar dor intensa, sangramento, trauma ou urgência: acolha com empatia, ofereça o primeiro horário disponível como encaixe prioritário e confirme o agendamento. Se a dor for insuportável ou houver sangramento intenso, oriente também a procurar um pronto-socorro odontológico. Nunca deixe o paciente sem agendamento.
 - Se o paciente pedir para falar com um humano, transfira sem resistir.
 
 ## Ferramentas

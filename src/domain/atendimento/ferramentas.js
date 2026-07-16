@@ -114,7 +114,7 @@ const FERRAMENTAS = [
   },
   {
     name: 'transferir_para_humano',
-    description: 'Transfere a conversa para a equipe da clínica. Use quando: paciente pedir, houver urgência/dor/emergência, assunto clínico, reclamação séria, ou você não tiver a informação.',
+    description: 'Transfere a conversa para a equipe da clínica. Use quando: paciente pedir explicitamente para falar com humano, assunto clínico complexo, reclamação séria, ou você não tiver a informação. NÃO use para urgência ou dor: nesses casos, agende um encaixe prioritário.',
     input_schema: {
       type: 'object',
       properties: { motivo: { type: 'string' } },
