@@ -73,6 +73,12 @@ router.post('/whatsapp', async (req, res) => {
           const telefone = msg.from;
           let texto = msg.text?.body || null;
 
+          if (!texto && msg.type === 'reaction') {
+            const emoji = msg.reaction?.emoji;
+            if (!emoji) continue; // reação removida — ignorar
+            texto = `[o paciente reagiu com ${emoji} à sua última mensagem]`;
+          }
+
           if (!texto && msg.type === 'audio' && msg.audio?.id) {
             console.log('[webhook] audio recebido, transcrevendo...');
             const t = await transcreverAudioMeta(msg.audio.id);
