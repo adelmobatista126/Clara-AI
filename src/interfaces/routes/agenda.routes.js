@@ -21,7 +21,7 @@ router.get('/horarios', async (req, res) => {
 
 // POST /agenda/agendamentos
 router.post('/agendamentos', async (req, res) => {
-  const r = await agenda.agendar(req.clinicaId, req.body);
+  const r = await agenda.agendar(req.clinicaId, { ...req.body, origem: req.body.origem || 'painel' });
   if (r.conflito) return res.status(409).json(r);
   if (r.erro) return res.status(500).json(r);
   res.status(201).json(r);

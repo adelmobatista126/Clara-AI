@@ -90,12 +90,15 @@ async function agendar(clinicaId, { pacienteId, profissionalId, procedimento, in
     return { erro: error.message };
   }
 
-  // Enfileira confirmação (o worker de automação envia)
-  await enfileirar(db, clinicaId, pacienteId, 'confirmacao_agendamento', {
-    agendamento_id: data.id,
-    inicio: data.inicio,
-    procedimento,
-  });
+  // Enfileira confirmação SÓ quando o agendamento não nasce da conversa
+  // (na conversa, a própria Clara já confirma — evitar mensagem duplicada)
+  if (origem !== 'clara') {
+    await enfileirar(db, clinicaId, pacienteId, 'confirmacao_agendamento', {
+      agendamento_id: data.id,
+      inicio: data.inicio,
+      procedimento,
+    });
+  }
 
   return { agendamento: data };
 }
