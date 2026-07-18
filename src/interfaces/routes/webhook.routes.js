@@ -6,6 +6,7 @@
 const { Router } = require('express');
 const { processarMensagem } = require('../../application/atendimento/atendimentoService');
 const { transcreverAudioMeta } = require('../../infrastructure/audio');
+const { marcarLidaEDigitando } = require('../../infrastructure/whatsapp');
 
 const router = Router();
 
@@ -71,6 +72,7 @@ router.post('/whatsapp', async (req, res) => {
 
         for (const msg of valor.messages) {
           const telefone = msg.from;
+          if (msg.type !== 'reaction') marcarLidaEDigitando(msg.id, phoneNumberId); // sem await: dispara e segue
           let texto = msg.text?.body || null;
 
           if (!texto && msg.type === 'reaction') {

@@ -86,4 +86,25 @@ function normalizarTelefone(telefone) {
   return String(telefone).replace(/\D/g, '');
 }
 
-module.exports = { enviarTexto, enviarTemplate, normalizarTelefone };
+// Marca a mensagem como lida (visto azul) e liga o "digitando..."
+async function marcarLidaEDigitando(msgId, phoneNumberId = process.env.META_PHONE_NUMBER_ID) {
+  try {
+    const token = process.env.META_ACCESS_TOKEN;
+    const url = `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/messages`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        status: 'read',
+        message_id: msgId,
+        typing_indicator: { type: 'text' },
+      }),
+    });
+    if (!res.ok) console.warn(`[whatsapp] lida/digitando falhou: ${res.status} ${await res.text()}`);
+  } catch (e) {
+    console.warn('[whatsapp] lida/digitando erro:', e.message);
+  }
+}
+
+module.exports = { enviarTexto, enviarTemplate, normalizarTelefone, marcarLidaEDigitando };
