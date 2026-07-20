@@ -285,7 +285,7 @@
     <div class="kpi"><div class="valor mono" id="kConsultas">–</div><div class="rotulo">Consultas hoje</div></div>
     <div class="kpi"><div class="valor mono" id="kConfirmadas">–</div><div class="rotulo">Confirmadas</div></div>
     <div class="kpi destaque"><div class="valor mono" id="kClara">–</div><div class="rotulo">Agendadas pela Clara</div></div>
-    <div class="kpi ruim"><div class="valor mono" id="kFaltas">–</div><div class="rotulo">Faltas</div></div>
+    <div class="kpi ruim"><div class="valor mono" id="kFaltas">–</div><div class="rotulo">Faltas</div><div class="rotulo mono" id="kTaxaFaltas" style="font-size:12px;margin-top:2px">–</div></div>
     <div class="kpi"><div class="valor mono" id="kNovos">–</div><div class="rotulo">Novos pacientes no mês</div></div>
     <div class="kpi"><div class="valor mono" id="kEspera">–</div><div class="rotulo">Na lista de espera</div></div>
   </section>
@@ -517,10 +517,16 @@
     try {
       const r = await api('/dashboard/resumo?dia=' + dia);
       $('kOcupacao').textContent = r.ocupacao_pct;
+      $('kOcupacao').style.color = r.ocupacao_pct < 30 ? '#c0392b'
+        : r.ocupacao_pct < 70 ? '#b7791f'
+        : '#2f855a';
       $('kConsultas').textContent = r.consultas;
       $('kConfirmadas').textContent = r.confirmadas;
       $('kClara').textContent = r.agendadas_pela_clara;
       $('kFaltas').textContent = r.faltas;
+      $('kTaxaFaltas').textContent = r.taxa_faltas_mes_pct != null
+        ? r.taxa_faltas_mes_pct + '% no mês'
+        : '';
       $('kNovos').textContent = r.novos_pacientes_mes;
       $('kEspera').textContent = r.lista_espera;
       desenharRegua(r.agenda);

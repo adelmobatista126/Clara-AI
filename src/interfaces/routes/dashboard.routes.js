@@ -15,7 +15,7 @@ router.get('/resumo', async (req, res) => {
   const fimDia = `${dia}T23:59:59-03:00`;
   const iniMes = `${dia.slice(0, 7)}-01T00:00:00-03:00`;
 
-  const [ags, grade, novos, espera] = await Promise.all([
+  const [ags, grade, novos, espera, mes] = await Promise.all([
     db.from('agendamentos')
       .select('id, inicio, fim, status, origem, procedimento, pacientes(nome), profissionais(nome)')
       .eq('clinica_id', req.clinicaId)
@@ -33,9 +33,14 @@ router.get('/resumo', async (req, res) => {
       .select('id', { count: 'exact', head: true })
       .eq('clinica_id', req.clinicaId)
       .eq('status', 'aguardando'),
+    db.from('agendamentos')
+      .select('status')
+      .eq('clinica_id', req.clinicaId)
+      .gte('inicio', iniMes).lte('inicio', fimDia)
+      .in('status', ['concluido', 'faltou']),
   ]);
 
-  const erro = ags.error || grade.error || novos.error || espera.error;
+  const erro = ags.error || grade.error || novos.error || espera.error || mes.error;
   if (erro) return res.status(500).json({ erro: erro.message });
 
   // Ocupação: minutos agendados ativos / minutos de grade do dia
@@ -58,6 +63,10 @@ router.get('/resumo', async (req, res) => {
     confirmadas: contar('confirmado'),
     canceladas: contar('cancelado'),
     faltas: contar('faltou'),
+    faltas_mes: mes.data.filter((a) => a.status === 'faltou').length,
+    taxa_faltas_mes_pct: mes.data.length
+      ? Math.round((mes.data.filter((a) => a.status === 'faltou').length / mes.data.length) * 100)
+      : 0,
     concluidas: contar('concluido'),
     agendadas_pela_clara: ags.data.filter((a) => a.origem === 'clara' && a.status !== 'cancelado').length,
     novos_pacientes_mes: novos.count || 0,
