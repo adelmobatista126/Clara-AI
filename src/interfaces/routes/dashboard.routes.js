@@ -136,4 +136,19 @@ router.patch('/conversas/:id/encerrar', async (req, res) => {
   res.json({ conversa: data });
 });
 
+// PATCH /dashboard/conversas/:id/devolver — devolve a conversa para a Clara
+router.patch('/conversas/:id/devolver', async (req, res) => {
+  const db = clientDaClinica(req.clinicaId);
+  const { data, error } = await db
+    .from('conversas')
+    .update({ status: 'ativa', transferida_em: null })
+    .eq('id', req.params.id)
+    .eq('clinica_id', req.clinicaId)
+    .eq('status', 'transferida_humano')
+    .select()
+    .single();
+  if (error) return res.status(500).json({ erro: error.message });
+  res.json({ conversa: data });
+});
+
 module.exports = router;

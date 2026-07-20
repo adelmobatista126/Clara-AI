@@ -560,7 +560,7 @@
   $('btnDevolver').addEventListener('click', async () => {
     if (!conversaAberta) return;
     try {
-      await api('/dashboard/conversas/' + conversaAberta.id + '/encerrar', { method: 'PATCH' });
+      await api('/dashboard/conversas/' + conversaAberta.id + '/devolver', { method: 'PATCH' });
       $('modalChat').style.display = 'none';
       carregarConversas();
     } catch (e) { mostrarErro('Não foi possível devolver: ' + e.message); }
