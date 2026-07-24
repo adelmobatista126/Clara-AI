@@ -6,6 +6,7 @@
 const { clientDaClinica } = require('../../infrastructure/supabase');
 const { gerarSlots } = require('../../domain/agenda/slots');
 const listaEspera = require('./listaEsperaService');
+const gcal = require('../../infrastructure/googleCalendar');
 
 const CODIGO_CONFLITO = '23P01'; // exclusion_violation (constraint sem_conflito)
 
@@ -39,6 +40,10 @@ async function horariosDisponiveis(clinicaId, { profissionalId, de, ate }) {
   const bloqueiosProf = blqs.data.filter(
     (b) => !b.profissional_id || b.profissional_id === profissionalId
   );
+
+  // Bidirecional: o que estiver ocupado no Google Agenda também bloqueia
+  const ocupadosGoogle = await gcal.consultarOcupados({ de: dtDe, ate: dtAte });
+  bloqueiosProf.push(...ocupadosGoogle);
 
   const resultado = [];
   for (let d = new Date(dtDe); d <= dtAte; d.setDate(d.getDate() + 1)) {
@@ -90,6 +95,25 @@ async function agendar(clinicaId, { pacienteId, profissionalId, procedimento, in
     return { erro: error.message };
   }
 
+  // Espelha no Google Agenda — falha aqui nunca derruba o agendamento
+  if (gcal.ativo()) {
+    const { data: pac } = await db
+      .from('pacientes')
+      .select('nome')
+      .eq('id', pacienteId)
+      .single();
+    const eventId = await gcal.criarEvento({
+      titulo: `${procedimento} — ${pac?.nome || 'Paciente'}`,
+      descricao: `Agendamento Clara #${data.id}`,
+      inicio: ini,
+      fim,
+    });
+    if (eventId) {
+      await db.from('agendamentos').update({ google_event_id: eventId }).eq('id', data.id);
+      data.google_event_id = eventId;
+    }
+  }
+
   // Enfileira confirmação SÓ quando o agendamento não nasce da conversa
   // (na conversa, a própria Clara já confirma — evitar mensagem duplicada)
   if (origem !== 'clara') {
@@ -127,6 +151,11 @@ async function reagendar(clinicaId, agendamentoId, { novoInicio, duracaoMin = 30
     .eq('id', agendamentoId);
   if (upd.error) return { erro: upd.error.message };
 
+  // O evento antigo no Google já não vale — o novo foi criado em agendar()
+  if (atual.data.google_event_id) {
+    await gcal.cancelarEvento(atual.data.google_event_id);
+  }
+
   await db.from('agendamentos').update({ reagendado_de: agendamentoId }).eq('id', novo.agendamento.id);
 
   // A vaga antiga abriu: tenta preencher pela lista de espera
@@ -156,6 +185,10 @@ async function cancelar(clinicaId, agendamentoId, { motivo = 'paciente solicitou
 
   if (error) return { erro: error.message };
   if (!data) return { erro: 'Agendamento não encontrado ou já finalizado.' };
+
+  if (data.google_event_id) {
+    await gcal.cancelarEvento(data.google_event_id);
+  }
 
   const preenchimento = await listaEspera.preencherVaga(clinicaId, {
     profissionalId: data.profissional_id,
